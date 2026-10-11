@@ -1,0 +1,103 @@
+{
+    "c_gen": 1295000.0,
+    "c_tran": 661.609375,
+    "prob": 0.3333333333333333,
+    "q_gen": 0.18,
+    "n_tran": [
+        {
+            "FromNode": "NO2",
+            "ToNode": "NO1",
+            "lineEfficiency": 0.97
+        },
+        {
+            "FromNode": "NO3",
+            "ToNode": "NO1",
+            "lineEfficiency": 0.97
+        },
+        {
+            "FromNode": "NO5",
+            "ToNode": "NO1",
+            "lineEfficiency": 0.97
+        },
+        {
+            "FromNode": "NO1",
+            "ToNode": "NO2",
+            "lineEfficiency": 0.97
+        },
+        {
+            "FromNode": "NO5",
+            "ToNode": "NO2",
+            "lineEfficiency": 0.97
+        },
+        {
+            "FromNode": "NO1",
+            "ToNode": "NO3",
+            "lineEfficiency": 0.97
+        },
+        {
+            "FromNode": "NO4",
+            "ToNode": "NO3",
+            "lineEfficiency": 0.97
+        },
+        {
+            "FromNode": "NO5",
+            "ToNode": "NO3",
+            "lineEfficiency": 0.97
+        },
+        {
+            "FromNode": "NO3",
+            "ToNode": "NO4",
+            "lineEfficiency": 0.97
+        },
+        {
+            "FromNode": "NO1",
+            "ToNode": "NO5",
+            "lineEfficiency": 0.97
+        },
+        {
+            "FromNode": "NO2",
+            "ToNode": "NO5",
+            "lineEfficiency": 0.97
+        },
+        {
+            "FromNode": "NO3",
+            "ToNode": "NO5",
+            "lineEfficiency": 0.97
+        }
+    ],
+    "x_bar_gen": 5133.0,
+    "x_bar_tran": [
+        {
+            "FromNode": "NO2",
+            "ToNode": "NO1",
+            "capacity": 3500.0
+        },
+        {
+            "FromNode": "NO3",
+            "ToNode": "NO1",
+            "capacity": 500.0
+        },
+        {
+            "FromNode": "NO5",
+            "ToNode": "NO1",
+            "capacity": 3900.0
+        },
+        {
+            "FromNode": "NO5",
+            "ToNode": "NO2",
+            "capacity": 600.0
+        },
+        {
+            "FromNode": "NO4",
+            "ToNode": "NO3",
+            "capacity": 1200.0
+        },
+        {
+            "FromNode": "NO5",
+            "ToNode": "NO3",
+            "capacity": 500.0
+        }
+    ],
+    "V_gen": 28000.0,
+    "alpha": 365
+}
