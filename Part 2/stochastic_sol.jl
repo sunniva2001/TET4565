@@ -83,8 +83,6 @@ x_bar_tran = Dict(
     for item in parameters["x_bar_tran"]
 )
 
-# 4. PREPARE DEMAND DATA (maybe move to data cleaning)
-
 # Scale demand to wind_demand_share% of the original values
 xi_load = Dict(
     (n, h) =>
@@ -92,8 +90,7 @@ xi_load = Dict(
     for n in N, h in H
 )
 
-# 5. PREPARE WIND AVAILABILITY DATA (maybe move to data cleaning)
-
+#Wind availability indexed by time and scenario
 xi_gen = Dict{Tuple{Int, String}, Float64}()
 
 for omega in Ω
