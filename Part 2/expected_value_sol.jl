@@ -1,4 +1,3 @@
-
 using JuMP
 using Gurobi
 using JSON
@@ -87,11 +86,6 @@ xi_load = Dict(
 # Expected wind availability indexed by hour
 sort!(wind_data, :time)
 
-nrow(wind_data) == length(H) ||
-    error(
-        "Expected 24 wind observations, found $(nrow(wind_data))"
-    )
-
 xi_gen = Dict(
     h => Float64(wind_data[h, :wind_availability])
     for h in H
@@ -113,7 +107,7 @@ function build_expected_model(
     @variable(model, x_gen >= 0)
     @variable(model, x_tran[l in L] >= 0)
 
-    # Operating decisions for expected wind availability
+    # Operating decisions
     @variable(model, y_gen[n in N, h in H] >= 0)
     @variable(model, y_flow[a in A, h in H] >= 0)
 
@@ -182,10 +176,7 @@ function build_expected_model(
     return model
 end
 
-# 5. SOLVE ONCE
-println("Demand share: ", 100 * wind_demand_share, "%")
-println("Solving deterministic model using expected wind values.")
-
+# 5. SOLVE THE DETERMINISTIC MODEL
 model = build_expected_model(
     N, L, A, H,
     A_in, A_out, A_l,
@@ -195,51 +186,40 @@ model = build_expected_model(
     V_gen, alpha
 )
 
-println("Starting optimization...")
 optimize!(model)
 
 println("Termination status: ", termination_status(model))
 println("Primal status: ", primal_status(model))
 
 # 6. DISPLAY RESULTS
-if has_values(model)
+obj = objective_value(model)
+new_gen = value(model[:x_gen])
 
-    obj = objective_value(model)
-    new_gen = value(model[:x_gen])
+println("Objective value: ", obj)
 
-    println("\n========== EXPECTED VALUE RESULTS ==========")
-    println("Objective value: ", obj)
+println("\nGeneration investment:")
+println("New capacity: ", new_gen, " MW")
 
-    println("\nGeneration investment:")
-    println("New capacity: ", new_gen, " MW")
+println("\nTransmission investments:")
+
+transmission_investments = Dict{Any, Float64}()
+
+for l in L
+    new_capacity = value(model[:x_tran][l])
+    transmission_investments[l] = new_capacity
+
     println(
-        "Total installed capacity: ",
-        x_bar_gen + new_gen, " MW"
+        l,
+        ": new = ", new_capacity, " MW",
+        ", total = ",
+        x_bar_tran[l] + new_capacity, " MW"
     )
-
-    println("\nTransmission investments:")
-
-    transmission_investments = Dict{Any, Float64}()
-
-    for l in L
-        new_capacity = value(model[:x_tran][l])
-        transmission_investments[l] = new_capacity
-
-        println(
-            l,
-            ": new = ", new_capacity, " MW",
-            ", total = ",
-            x_bar_tran[l] + new_capacity, " MW"
-        )
-    end
-
-    total_generation = sum(
-        value(model[:y_gen][n, h])
-        for n in N, h in H
-    )
-
-    println("\nTotal generation: ", total_generation, " MWh")
-
-else
-    println("No feasible solution was found.")
 end
+
+total_generation = sum(
+    value(model[:y_gen][n, h])
+    for n in N, h in H
+)
+
+println("\nTotal generation: ", total_generation, " MWh")
+

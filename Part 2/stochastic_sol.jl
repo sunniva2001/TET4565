@@ -1,4 +1,3 @@
-
 using JuMP
 using Gurobi
 using JSON
@@ -107,7 +106,7 @@ for omega in Ω
     end
 end
 
-# 6. STOCHASTIC MODEL
+# 4. STOCHASTIC MODEL
 
 function build_stochastic_model(
     N, L, A, H, Ω,
@@ -128,7 +127,7 @@ function build_stochastic_model(
     @variable(model, y_gen[n in N, h in H, omega in Ω] >= 0)
     @variable(model, y_flow[a in A, h in H, omega in Ω] >= 0)
 
-    # Objective function (1)
+    # Objective function
     @objective(
         model,
         Min,
@@ -143,7 +142,7 @@ function build_stochastic_model(
         )
     )
 
-    # Power balance (2)
+    # Power balance
     @constraint(
         model,
         power_balance[n in N, h in H, omega in Ω],
@@ -163,7 +162,7 @@ function build_stochastic_model(
         == xi_load[(n, h)]
     )
 
-    # Aggregate generation capacity (3)
+    # Aggregate generation capacity
     @constraint(
         model,
         generation_capacity[h in H, omega in Ω],
@@ -173,7 +172,7 @@ function build_stochastic_model(
         <= xi_gen[(h, omega)] * (x_bar_gen + x_gen)
     )
 
-    # Transmission capacity for each directed arc (4)
+    # Transmission capacity for each directed arc
     @constraint(
         model,
         transmission_capacity[l in L, a in A_l[l],
@@ -183,7 +182,7 @@ function build_stochastic_model(
             x_bar_tran[l] + x_tran[l]
     )
 
-    # Maximum installed generation capacity (5)
+    # Maximum installed generation capacity
     @constraint(
         model,
         max_inst_gen,
@@ -194,14 +193,7 @@ function build_stochastic_model(
     return model
 end
 
-# 7. BUILD AND SOLVE THE STOCHASTIC MODEL
-
-println("Demand share: ", 100 * wind_demand_share, "%")
-println("Nodes: ", N)
-println("Directed arcs: ", length(A))
-println("Physical transmission lines: ", length(L))
-println("Scenarios: ", Ω)
-
+# 5. BUILD AND SOLVE THE STOCHASTIC MODEL
 model = build_stochastic_model(
     N, L, A, H, Ω,
     A_in, A_out, A_l,
@@ -211,57 +203,37 @@ model = build_stochastic_model(
     V_gen, alpha
 )
 
-println("\nStarting optimization...")
 optimize!(model)
 
-# ============================================================
-# 8. Report results
-# ============================================================
-
-println("\n========== OPTIMIZATION RESULTS ==========")
 println("Termination status: ", termination_status(model))
 println("Primal status: ", primal_status(model))
 
-if has_values(model)
+println("Objective value: ", objective_value(model))
 
-    println("Objective value: ", objective_value(model))
+println("\nGeneration investment:")
+println("New capacity: ", value(model[:x_gen]), " MW")
 
-    println("\nGeneration investment:")
-    println("New capacity: ", value(model[:x_gen]), " MW")
+println("\nTransmission investments:")
+
+for l in L
     println(
-        "Total installed capacity: ",
-        x_bar_gen + value(model[:x_gen]), " MW"
+        l,
+        ": new = ", value(model[:x_tran][l]), " MW",
+        ", total = ",
+        x_bar_tran[l] + value(model[:x_tran][l]), " MW"
+    )
+end
+
+println("\nTotal generation by scenario:")
+
+for omega in Ω
+    total_generation = sum(
+        value(model[:y_gen][n, h, omega])
+        for n in N, h in H
     )
 
-    println("\nTransmission investments:")
-
-    for l in L
-        println(
-            l,
-            ": new = ", value(model[:x_tran][l]), " MW",
-            ", total = ",
-            x_bar_tran[l] + value(model[:x_tran][l]), " MW"
-        )
-    end
-
-    println("\nTotal generation by scenario:")
-
-    for omega in Ω
-        total_generation = sum(
-            value(model[:y_gen][n, h, omega])
-            for n in N, h in H
-        )
-
-        println(
-            omega,
-            ": ", total_generation, " MWh over the 24-hour horizon"
-        )
-    end
-
-else
-    println("No feasible solution was found.")
     println(
-        "Check wind availability, demand, generation capacity, ",
-        "and transmission constraints."
+        omega,
+        ": ", total_generation, " MWh over the 24-hour horizon"
     )
 end

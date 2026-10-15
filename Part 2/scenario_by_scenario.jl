@@ -196,10 +196,6 @@ end
 # 5. SOLVE EACH SCENARIO INDEPENDENTLY
 results = Dict{String, Any}()
 
-println("Demand share: ", 100 * wind_demand_share, "%")
-println("Solving each scenario independently.")
-println("Investment decisions can differ between scenarios.")
-
 for omega in Ω
 
     println("SCENARIO: ", uppercase(omega))
@@ -214,61 +210,54 @@ for omega in Ω
         omega
     )
 
-    println("Starting optimization...")
     optimize!(model)
 
     println("Termination status: ", termination_status(model))
     println("Primal status: ", primal_status(model))
 
-    if has_values(model)
+    obj = objective_value(model)
+    new_gen = value(model[:x_gen])
 
-        obj = objective_value(model)
-        new_gen = value(model[:x_gen])
+    println("Objective value: ", obj)
 
-        println("Objective value: ", obj)
+    println("\nGeneration investment:")
+    println("New capacity: ", new_gen, " MW")
+    println(
+        "Total installed capacity: ",
+        x_bar_gen + new_gen, " MW"
+    )
 
-        println("\nGeneration investment:")
-        println("New capacity: ", new_gen, " MW")
+    println("\nTransmission investments:")
+
+    transmission_investments = Dict{Any, Float64}()
+
+    for l in L
+        new_capacity = value(model[:x_tran][l])
+        transmission_investments[l] = new_capacity
+
         println(
-            "Total installed capacity: ",
-            x_bar_gen + new_gen, " MW"
+            l,
+            ": new = ", new_capacity, " MW",
+            ", total = ",
+            x_bar_tran[l] + new_capacity, " MW"
         )
-
-        println("\nTransmission investments:")
-
-        transmission_investments = Dict{Any, Float64}()
-
-        for l in L
-            new_capacity = value(model[:x_tran][l])
-            transmission_investments[l] = new_capacity
-
-            println(
-                l,
-                ": new = ", new_capacity, " MW",
-                ", total = ",
-                x_bar_tran[l] + new_capacity, " MW"
-            )
-        end
-
-        total_generation = sum(
-            value(model[:y_gen][n, h])
-            for n in N, h in H
-        )
-
-        println("\nTotal generation: ", total_generation, " MWh")
-
-        # Store results for comparison
-        results[omega] = (
-            objective = obj,
-            new_generation_capacity = new_gen,
-            total_generation_capacity = x_bar_gen + new_gen,
-            transmission_investments = transmission_investments,
-            total_generation = total_generation
-        )
-
-    else
-        println("No feasible solution was found.")
     end
+
+    total_generation = sum(
+        value(model[:y_gen][n, h])
+        for n in N, h in H
+    )
+
+    println("\nTotal generation: ", total_generation, " MWh")
+
+    # Store results for comparison
+    results[omega] = (
+        objective = obj,
+        new_generation_capacity = new_gen,
+        total_generation_capacity = x_bar_gen + new_gen,
+        transmission_investments = transmission_investments,
+        total_generation = total_generation
+    )
 end
 
 # 6. COMPARE THE SCENARIO-SPECIFIC SOLUTIONS
