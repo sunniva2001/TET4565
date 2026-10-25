@@ -5,7 +5,7 @@ using CSV
 using DataFrames
 using Plasmo
 using PlasmoBenders
-
+using Plots
 
 # 1. LOAD DATA
 parameters = JSON.parsefile("Part 3/Model data/parameter_data.json")
@@ -453,7 +453,7 @@ for scenarios in sets.Ω
 
     node = scenario_nodes[scenarios]
 
-    total_generation = sum(
+    local total_generation = sum(
         value(benders, node[:y_gen][n, h])
         for n in sets.N, h in sets.H
     )
@@ -464,4 +464,112 @@ for scenarios in sets.Ω
         total_generation,
         " MWh over the 24-hour horizon"
     )
+end
+
+
+
+
+#10. CONVERGENCE ANALYSIS
+
+
+lower_bounds = PlasmoBenders.get_lower_bounds(benders)
+upper_bounds = PlasmoBenders.get_upper_bounds(benders; monotonic=true)
+
+# Define iterations
+iterations = 1:length(lower_bounds)
+
+@assert length(lower_bounds) == length(upper_bounds)
+
+abs_gaps = [
+    ub - lb
+    for (lb, ub) in zip(lower_bounds, upper_bounds)
+]
+
+rel_gaps = [
+    (ub - lb) / max(1.0, abs(ub))
+    for (lb, ub) in zip(lower_bounds, upper_bounds)
+]
+
+convergence_data = DataFrame(
+    Iteration = 1:length(lower_bounds),
+    LowerBound = lower_bounds,
+    UpperBound = upper_bounds,
+    AbsoluteGap = abs_gaps,
+    RelativeGap = rel_gaps
+)
+
+println("\nBenders convergence:")
+show(convergence_data, allrows=true)
+println()
+
+CSV.write(
+    "Part 3/benders_convergence.csv",
+    convergence_data
+)
+
+println("\nFinal convergence summary:")
+println("Iterations: ", length(lower_bounds))
+println("Lower bound: ", last(lower_bounds))
+println("Upper bound: ", last(upper_bounds))
+println("Absolute gap: ", last(abs_gaps))
+println("Relative gap: ", last(rel_gaps))
+println("Configured absolute tolerance: ", benders.tol)
+println("Converged: ", last(abs_gaps) <= benders.tol)
+
+p = plot(
+    iterations,
+    lower_bounds,
+    label = "Lower Bound (LB)",
+    linewidth = 2,
+    marker = :circle,
+    xlabel = "Benders Iteration",
+    ylabel = "Objective Value",
+    title = "Benders Decomposition Convergence",
+    legend = :best,
+    grid = true,
+    xticks = collect(iterations),
+    size = (900, 550)
+)
+
+plot!(
+    p,
+    iterations,
+    upper_bounds,
+    label = "Upper Bound (UB)",
+    linewidth = 2,
+    marker = :square
+)
+
+# Display plot
+display(p)
+
+# Save plot as PNG
+savefig(
+    p,
+    joinpath(@__DIR__, "benders_convergence.png")
+)
+
+println("\nConvergence plot saved successfully.")
+
+
+
+#11. INSPECT BENDERS DUAL INFORMATION
+
+
+println("\nStored dual information:")
+
+println("Number of entries in dual_iters: ",
+        length(benders.dual_iters))
+
+for (subproblem, dual_history) in benders.dual_iters
+    println("\nSubproblem: ", subproblem)
+    println("Dual data type: ", typeof(dual_history))
+    println("Stored entries: ", length(dual_history))
+    println("Last dual entry: ", last(dual_history))
+end
+
+println("\nComplicating variables:")
+
+for (subproblem, variables) in benders.comp_vars
+    println(subproblem, ": ", variables)
 end
