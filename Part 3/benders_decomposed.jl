@@ -553,23 +553,3 @@ println("\nConvergence plot saved successfully.")
 
 
 
-#11. INSPECT BENDERS DUAL INFORMATION
-
-
-println("\nStored dual information:")
-
-println("Number of entries in dual_iters: ",
-        length(benders.dual_iters))
-
-for (subproblem, dual_history) in benders.dual_iters
-    println("\nSubproblem: ", subproblem)
-    println("Dual data type: ", typeof(dual_history))
-    println("Stored entries: ", length(dual_history))
-    println("Last dual entry: ", last(dual_history))
-end
-
-println("\nComplicating variables:")
-
-for (subproblem, variables) in benders.comp_vars
-    println(subproblem, ": ", variables)
-end
