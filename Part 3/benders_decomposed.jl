@@ -402,6 +402,85 @@ println(
 # Solve using Benders decomposition
 run_algorithm!(benders)
 
+function export_benders_history(
+    benders,
+    scenario_graphs,
+    output_directory
+)
+    dual_rows = NamedTuple[]
+    cut_rows = NamedTuple[]
+
+    for scenario in keys(scenario_graphs)
+        scenario_graph = scenario_graphs[scenario]
+
+        if !haskey(benders.dual_iters, scenario_graph)
+            continue
+        end
+
+        dual_history = benders.dual_iters[scenario_graph]
+        primal_history = benders.primal_iters[scenario_graph]
+        phi_history = benders.phis[scenario_graph]
+        complicating_variables = benders.comp_vars[scenario_graph]
+
+        n_iterations = min(
+            size(dual_history, 2),
+            size(primal_history, 2),
+            length(phi_history)
+        )
+
+        for iteration in 1:n_iterations
+            phi = phi_history[iteration]
+            reference_values = primal_history[:, iteration]
+            dual_values = dual_history[:, iteration]
+            variable_names = string.(complicating_variables)
+            constant_term = phi - sum(dual_values .* reference_values)
+            cut_expression = string(phi)
+
+            for (variable_name, dual_value, reference_value) in zip(
+                variable_names,
+                dual_values,
+                reference_values
+            )
+                cut_expression *= " + $(dual_value) * ($(variable_name) - $(reference_value))"
+
+                push!(dual_rows, (
+                    Iteration = iteration,
+                    Scenario = scenario,
+                    Variable = variable_name,
+                    DualValue = dual_value,
+                    ReferencePoint = reference_value,
+                    Phi = phi
+                ))
+            end
+
+            push!(cut_rows, (
+                Iteration = iteration,
+                Scenario = scenario,
+                Phi = phi,
+                ConstantTerm = constant_term,
+                CutExpression = cut_expression
+            ))
+        end
+    end
+
+    duals_path = joinpath(output_directory, "benders_duals.csv")
+    cuts_path = joinpath(output_directory, "benders_cuts.csv")
+
+    CSV.write(duals_path, DataFrame(dual_rows))
+    CSV.write(cuts_path, DataFrame(cut_rows))
+
+    println("Dual history saved to: ", duals_path)
+    println("Benders cuts saved to: ", cuts_path)
+
+    return nothing
+end
+
+export_benders_history(
+    benders,
+    scenario_graphs,
+    @__DIR__
+)
+
 # ==========================================
 # RESULTS
 # ==========================================
